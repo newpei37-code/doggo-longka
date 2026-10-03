@@ -553,6 +553,13 @@ class PuppeteerService {
             ? telegram_config_1.telegramConfig.link_forward_du_doan_cai
             : telegram_config_1.telegramConfig.link_forward_du_doan_con) || '');
     }
+    getResultLink(isDraw, isWin) {
+        return ((isDraw
+            ? telegram_config_1.telegramConfig.link_forward_lenh_ket_thuc_draw
+            : isWin
+                ? telegram_config_1.telegramConfig.link_forward_lenh_ket_thuc_win
+                : telegram_config_1.telegramConfig.link_forward_lenh_ket_thuc_lose) || '');
+    }
     calculateWinAmount(winner, useAo) {
         const config = this.getGameBetConfig(useAo ?? false);
         const { betAmount, bankerOdds, playerOdds } = config;
@@ -1203,22 +1210,13 @@ class PuppeteerService {
                                 });
                                 await this.screenshotLock;
                                 try {
-                                    let predictionResult = '';
-                                    if (isDrawResult) {
-                                        predictionResult = '<b>🤝 HÒA 🤝</b>';
-                                    }
-                                    else if (isWin) {
-                                        const winAmount = Math.round(this.calculateWinAmount(currentResult.winner));
-                                        predictionResult = `<b>🟢 HÚP + ${winAmount} 🟢</b>`;
-                                    }
-                                    else {
-                                        const betAmount = this.getBetAmount();
-                                        predictionResult = `<b>🔴 LOSE - ${betAmount} 🔴</b>`;
-                                    }
+                                    const resultLink = this.getResultLink(isDrawResult, isWin);
                                     await new Promise((resolve) => setTimeout(resolve, 2000));
-                                    const caption = `<b>Tay Con: ${currentResult.playerValue}\nNhà Cái: ${currentResult.bankerValue}\nDự đoán: ${prediction}</b>\n${predictionResult}`;
                                     if (this.shouldSendToNhomThat()) {
-                                        await this.telegramService.sendPhoto(telegram_config_1.telegramConfig.gui_tin_nhan_vao_group_that, resultImagePath, predictionResult);
+                                        await this.telegramService.sendPhoto(telegram_config_1.telegramConfig.gui_tin_nhan_vao_group_that, resultImagePath);
+                                        if (resultLink) {
+                                            await this.telegramService.forwardMessageFromLink(resultLink, telegram_config_1.telegramConfig.gui_tin_nhan_vao_group_that);
+                                        }
                                         this.logger.log('📤 Đã gửi ảnh kết quả qua Telegram');
                                     }
                                     else {
@@ -1515,21 +1513,15 @@ class PuppeteerService {
                                 }
                                 this.logger.log('⏳ Group ảo: Đợi 15 giây trước khi gửi kết quả...');
                                 await new Promise((resolve) => setTimeout(resolve, 15000));
-                                let predictionResult = '';
-                                if (isDrawResult) {
-                                    predictionResult = '<b>🤝 HÒA 🤝</b>';
-                                }
-                                else if (isWin) {
-                                    const winAmount = Math.round(this.calculateWinAmount(currentResult.winner, true));
-                                    predictionResult = `<b>🟢 HÚP + ${winAmount} 🟢</b>`;
-                                }
-                                else {
-                                    const betAmount = this.getBetAmount(true);
-                                    predictionResult = `<b>🔴 LOSE - ${betAmount} 🔴</b>`;
-                                }
+                                const resultLink = this.getResultLink(isDrawResult, isWin);
                                 try {
-                                    const caption = `<b>Tay Con: ${currentResult.playerValue}\nNhà Cái: ${currentResult.bankerValue}\nDự đoán: ${prediction}</b>\n${predictionResult}`;
-                                    await this.sendPhotoToGroupAo(resultImagePath, predictionResult);
+                                    await this.sendPhotoToGroupAo(resultImagePath);
+                                    if (resultLink) {
+                                        await this.forwardMessageToGroupAo(resultLink);
+                                    }
+                                    else {
+                                        this.logger.log('⏭️ Group ảo: Thiếu link kết quả, bỏ gửi');
+                                    }
                                     this.logger.log('📤 Group ảo: Đã gửi ảnh kết quả (sau 20s)');
                                     try {
                                         if (fs.existsSync(resultImagePath)) {

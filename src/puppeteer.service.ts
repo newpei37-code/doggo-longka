@@ -685,6 +685,16 @@ export class PuppeteerService {
     );
   }
 
+  private getResultLink(isDraw: boolean, isWin: boolean): string {
+    return (
+      (isDraw
+        ? telegramConfig.link_forward_lenh_ket_thuc_draw
+        : isWin
+          ? telegramConfig.link_forward_lenh_ket_thuc_win
+          : telegramConfig.link_forward_lenh_ket_thuc_lose) || ''
+    );
+  }
+
   // Helper: Tính toán số tiền thắng (chỉ số, không có dấu +/-). useAo = true cho group ảo.
   private calculateWinAmount(winner?: string, useAo?: boolean): number {
     const config = this.getGameBetConfig(useAo ?? false);
@@ -1598,31 +1608,21 @@ export class PuppeteerService {
 
                 // Gửi ảnh qua Telegram vào group thật — TẮT
                 try {
-                  let predictionResult = '';
-                  if (isDrawResult) {
-                    // Kết quả HÒA
-                    predictionResult = '<b>🤝 HÒA 🤝</b>';
-                  } else if (isWin) {
-                    // Dự đoán đúng
-                    const winAmount = Math.round(
-                      this.calculateWinAmount(currentResult.winner),
-                    );
-                    predictionResult = `<b>🟢 HÚP + ${winAmount} 🟢</b>`;
-                  } else {
-                    // Dự đoán sai
-                    const betAmount = this.getBetAmount();
-                    predictionResult = `<b>🔴 LOSE - ${betAmount} 🔴</b>`;
-                  }
+                  const resultLink = this.getResultLink(isDrawResult, isWin);
 
                   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-                  const caption = `<b>Tay Con: ${currentResult.playerValue}\nNhà Cái: ${currentResult.bankerValue}\nDự đoán: ${prediction}</b>\n${predictionResult}`;
                   if (this.shouldSendToNhomThat()) {
                     await this.telegramService.sendPhoto(
                       telegramConfig.gui_tin_nhan_vao_group_that,
                       resultImagePath,
-                      predictionResult,
                     );
+                    if (resultLink) {
+                      await this.telegramService.forwardMessageFromLink(
+                        resultLink,
+                        telegramConfig.gui_tin_nhan_vao_group_that,
+                      );
+                    }
                     this.logger.log('📤 Đã gửi ảnh kết quả qua Telegram');
                   } else {
                     this.logger.log(
@@ -2031,28 +2031,16 @@ export class PuppeteerService {
                 );
                 await new Promise((resolve) => setTimeout(resolve, 15000));
 
-                // 🎭 BƯỚC 6: Xác định kết quả hiển thị (group ảo – gameBetConfigAo)
-                let predictionResult = '';
-                if (isDrawResult) {
-                  // Kết quả HÒA
-                  predictionResult = '<b>🤝 HÒA 🤝</b>';
-                } else if (isWin) {
-                  // Dự đoán đúng
-                  const winAmount = Math.round(
-                    this.calculateWinAmount(currentResult.winner, true),
-                  );
-                  predictionResult = `<b>🟢 HÚP + ${winAmount} 🟢</b>`;
-                } else {
-                  // Dự đoán sai
-                  const betAmount = this.getBetAmount(true);
-                  predictionResult = `<b>🔴 LOSE - ${betAmount} 🔴</b>`;
-                }
+                const resultLink = this.getResultLink(isDrawResult, isWin);
 
                 // 🎭 BƯỚC 7: Gửi ảnh kết quả qua Telegram vào group ảo
                 try {
-                  const caption = `<b>Tay Con: ${currentResult.playerValue}\nNhà Cái: ${currentResult.bankerValue}\nDự đoán: ${prediction}</b>\n${predictionResult}`;
-
-                  await this.sendPhotoToGroupAo(resultImagePath, predictionResult);
+                  await this.sendPhotoToGroupAo(resultImagePath);
+                  if (resultLink) {
+                    await this.forwardMessageToGroupAo(resultLink);
+                  } else {
+                    this.logger.log('⏭️ Group ảo: Thiếu link kết quả, bỏ gửi');
+                  }
                   this.logger.log('📤 Group ảo: Đã gửi ảnh kết quả (sau 20s)');
 
                   // Xóa ảnh sau khi gửi thành công

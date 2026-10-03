@@ -31,6 +31,7 @@ export declare class PuppeteerService {
     private getGameBetConfig;
     private getBetAmount;
     private getPredictionLink;
+    private getResultLink;
     private calculateWinAmount;
     private calculateAmount;
     private waitForGameIframeReady;

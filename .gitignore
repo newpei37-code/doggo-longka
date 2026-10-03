@@ -1,0 +1,12 @@
+node_modules/
+config*.json
+sheet-bot.json
+data/
+screenshots-*/
+combie-image/
+.amp/
+*.log
+*.tsbuildinfo
+dist/*
+!dist/src/
+!dist/config/
